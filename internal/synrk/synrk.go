@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/google/go-github/v52/github"
@@ -47,21 +46,13 @@ func NewSynrk(client *github.Client, pageSize int, force bool) Synrk {
 }
 
 func (c *concrete) GetForks(ctx context.Context) ([]*RepositoryWithDetails, error) {
-	var forksWithDetails []*RepositoryWithDetails
 	forks, err := c.getAllForks(ctx)
 
 	if err != nil {
-		return forksWithDetails, fmt.Errorf("failed to fetch fork list: %w\n", err)
+		return nil, fmt.Errorf("failed to fetch fork list: %w\n", err)
 	}
 
-	forkStream := c.getReposDetail(ctx, forks)
-
-	for fork := range forkStream {
-		if fork.Error == nil && fork.BehindBy < 1 {
-			continue
-		}
-		forksWithDetails = append(forksWithDetails, fork)
-	}
+	forksWithDetails := c.getReposDetail(ctx, forks)
 
 	sort.SliceStable(forksWithDetails, func(i, j int) bool {
 		return forksWithDetails[i].BehindBy > forksWithDetails[j].BehindBy
@@ -85,13 +76,10 @@ func (c *concrete) SyncBranchWithUpstreamRepo(repo *RepositoryWithDetails) error
 	return nil
 }
 
-func (c *concrete) getReposDetail(ctx context.Context, forks []*github.Repository) <-chan *RepositoryWithDetails {
-	var wg sync.WaitGroup
+func (c *concrete) getReposDetail(ctx context.Context, forks []*github.Repository) []*RepositoryWithDetails {
 	done := make(chan any)
-	forkStream := make(chan *RepositoryWithDetails, len(forks))
 
 	defer close(done)
-	defer close(forkStream)
 
 	forksRequiredSync := []*github.Repository{}
 
@@ -103,11 +91,11 @@ func (c *concrete) getReposDetail(ctx context.Context, forks []*github.Repositor
 		forksRequiredSync = append(forksRequiredSync, fork)
 	}
 
-	wg.Add(len(forksRequiredSync))
+	forkStream := make(chan *RepositoryWithDetails, len(forksRequiredSync))
+	defer close(forkStream)
 
 	for _, fork := range forksRequiredSync {
 		go func() {
-			defer wg.Done()
 			select {
 			case <-done:
 				return
@@ -155,9 +143,13 @@ func (c *concrete) getReposDetail(ctx context.Context, forks []*github.Repositor
 		}()
 	}
 
-	wg.Wait()
+	forksWithDetails := make([]*RepositoryWithDetails, 0, len(forksRequiredSync))
+	for range len(forksRequiredSync) {
+		fork := <-forkStream
+		forksWithDetails = append(forksWithDetails, fork)
+	}
 
-	return forkStream
+	return forksWithDetails
 }
 
 func (c *concrete) buildDetails(repo *github.Repository, commit *github.CommitsComparison, code int) *RepositoryWithDetails {

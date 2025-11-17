@@ -1,6 +1,6 @@
 {
     "name": "synrk",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "bin": "lib/index.js",
     "description": "Synchronize your forks with ease",
     "repository": {
@@ -25,11 +25,11 @@
         "typescript": "5.8.3"
     },
     "optionalDependencies": {
-        "synrk-darwin-arm64": "0.2.1",
-        "synrk-darwin-amd64": "0.2.1",
-        "synrk-linux-arm64": "0.2.1",
-        "synrk-linux-amd64": "0.2.1",
-        "synrk-windows-arm64": "0.2.1",
-        "synrk-windows-amd64": "0.2.1"
+        "synrk-darwin-arm64": "0.2.2",
+        "synrk-darwin-amd64": "0.2.2",
+        "synrk-linux-arm64": "0.2.2",
+        "synrk-linux-amd64": "0.2.2",
+        "synrk-windows-arm64": "0.2.2",
+        "synrk-windows-amd64": "0.2.2"
     }
 }

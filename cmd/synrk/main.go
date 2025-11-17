@@ -13,6 +13,15 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+func getGitHubToken(c *cli.Context) string {
+	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+		return token
+	}
+
+	// Fallback to CLI flag
+	return c.String("token")
+}
+
 func main() {
 	app := cli.NewApp()
 
@@ -46,7 +55,8 @@ func main() {
 		}
 		defer func() { _ = f.Close() }()
 
-		token := c.String("token")
+		token := getGitHubToken(c)
+
 		if token == "" {
 			return cli.Exit("missing github token", 1)
 		}

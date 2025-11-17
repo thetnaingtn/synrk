@@ -1,9 +1,9 @@
 <h1 align="center">
-    Synrk
+    synrk
 </h1>
 <p align="center">
     <b>synrk</b> is a CLI tool that you can use to synchronize your forks with upstream repositories. You can select more than one repository at a time and synchronize them.<br>
-    <i>[Syn]</i>chronize Fo<i>[rk]</i>s
+    <i>[syn]</i>chronize Fo<i>[rk]</i>s
 </p>
 
 ----

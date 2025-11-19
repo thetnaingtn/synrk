@@ -4,6 +4,26 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+optionalDependencies:
+  synrk-darwin-amd64:
+    specifier: 0.2.2
+    version: 0.2.2
+  synrk-darwin-arm64:
+    specifier: 0.2.2
+    version: 0.2.2
+  synrk-linux-amd64:
+    specifier: 0.2.2
+    version: 0.2.2
+  synrk-linux-arm64:
+    specifier: 0.2.2
+    version: 0.2.2
+  synrk-windows-amd64:
+    specifier: 0.2.2
+    version: 0.2.2
+  synrk-windows-arm64:
+    specifier: 0.2.2
+    version: 0.2.2
+
 devDependencies:
   '@types/node':
     specifier: 24.0.3
@@ -843,6 +863,54 @@ packages:
     dependencies:
       has-flag: 4.0.0
     dev: true
+
+  /synrk-darwin-amd64@0.2.2:
+    resolution: {integrity: sha512-TcYKXhAb0NxV3ATrk7xq2zT+OdWLEUnS9yJh7hmF/ksK3OrI6R/V8ewME5VJw0UljUDLWfSI5RKrKwEjZ6kzLQ==}
+    cpu: [amd64]
+    os: [darwin]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /synrk-darwin-arm64@0.2.2:
+    resolution: {integrity: sha512-a98+6wqXtVw3QNDZSrfAJrLtVC+HKhl0GCUheUaQzo2QMxKasSMVF5AKtoILyfwEte4RfZaICNg5oSs/9D5WmQ==}
+    cpu: [arm64]
+    os: [darwin]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /synrk-linux-amd64@0.2.2:
+    resolution: {integrity: sha512-K6Yp+GYRcGI34nlGNHowMOnfmILemfx0IDBQL4XEGFzoKSyl4JkyFZbg+vwi9dzEa8TzyQMC0G7Z57ANTuxYIg==}
+    cpu: [amd64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /synrk-linux-arm64@0.2.2:
+    resolution: {integrity: sha512-RQy4a3CeortoBq+e5b5y3eH/87B37rENkAN18o7P+Un7YMqSQOKqe/HZN1NJ1dK0KKoAWVJ4imvLyiXeU8jAAg==}
+    cpu: [arm64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /synrk-windows-amd64@0.2.2:
+    resolution: {integrity: sha512-DhTj12RfdHVo5sQVzh1tVtyCG8ruQ2f8BeANqBgW9s3dH/0yMRdyBxGmG8ahJlN02QuCyMews517XP6mZor9vg==}
+    cpu: [amd64]
+    os: [windows]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /synrk-windows-arm64@0.2.2:
+    resolution: {integrity: sha512-rTTRVraAHIOWqA90ZP7G/4TR7dG7qEKPnIMrQ6UG9eVjcdWrGjosAD6YPNMhwJaXcqqrisK0pF0lNhC+g9H1og==}
+    cpu: [arm64]
+    os: [windows]
+    requiresBuild: true
+    dev: false
+    optional: true
 
   /to-regex-range@5.0.1:
     resolution: {integrity: sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ==}

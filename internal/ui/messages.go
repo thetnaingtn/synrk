@@ -2,7 +2,6 @@ package ui
 
 import (
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/thetnaingtn/synrk/internal/synrk"
 )
 
 type errorMsg struct {
@@ -17,7 +16,7 @@ type refreshReposListMsg struct{}
 
 type getReposListMsg struct{}
 type gotReposListMsg struct {
-	repos []*synrk.RepositoryWithDetails
+	repos []*RepositoryWithDetails
 }
 
 type mergeSelectedReposMsg struct{}

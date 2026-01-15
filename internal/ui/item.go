@@ -4,11 +4,10 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/thetnaingtn/synrk/internal/synrk"
 )
 
 type item struct {
-	repo     *synrk.RepositoryWithDetails
+	repo     *RepositoryWithDetails
 	selected bool
 	synced   bool
 	errMsg   string
@@ -68,7 +67,7 @@ func (i item) FilterValue() string {
 	return "  " + i.repo.FullName
 }
 
-func reposToItems(repos []*synrk.RepositoryWithDetails) []list.Item {
+func reposToItems(repos []*RepositoryWithDetails) []list.Item {
 	items := make([]list.Item, 0, len(repos))
 	for _, repo := range repos {
 		items = append(items, item{repo: repo})

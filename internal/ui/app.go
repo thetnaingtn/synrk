@@ -8,11 +8,15 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/thetnaingtn/synrk/internal/synrk"
 )
 
+type repository interface {
+	GetForks(ctx context.Context) ([]*RepositoryWithDetails, error)
+	SyncBranchWithUpstreamRepo(repo *RepositoryWithDetails) error
+}
+
 type AppModel struct {
-	synrk synrk.Synrk
+	synrk repository
 	err   error
 	list  list.Model
 }
@@ -68,7 +72,7 @@ func (m AppModel) isAllSelectedReposSynced() bool {
 	return true
 }
 
-func NewAppModel(synrk synrk.Synrk) AppModel {
+func NewAppModel(synrk repository) AppModel {
 	list := newList()
 	return AppModel{synrk: synrk, list: list}
 }

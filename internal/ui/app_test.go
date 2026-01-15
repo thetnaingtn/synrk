@@ -10,7 +10,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/exp/teatest"
 	"github.com/muesli/termenv"
-	"github.com/thetnaingtn/synrk/internal/synrk"
 )
 
 type mockSynrk struct{}
@@ -19,9 +18,9 @@ func init() {
 	lipgloss.SetColorProfile(termenv.Ascii)
 }
 
-func (m *mockSynrk) GetForks(ctx context.Context) ([]*synrk.RepositoryWithDetails, error) {
+func (m *mockSynrk) GetForks(ctx context.Context) ([]*RepositoryWithDetails, error) {
 	fmt.Println("Mock: Fetching forks...")
-	repos := []*synrk.RepositoryWithDetails{
+	repos := []*RepositoryWithDetails{
 		{
 			Owner:          "owner1",
 			Name:           "repo1",
@@ -51,7 +50,7 @@ func (m *mockSynrk) GetForks(ctx context.Context) ([]*synrk.RepositoryWithDetail
 	return repos, nil
 }
 
-func (m *mockSynrk) SyncBranchWithUpstreamRepo(repo *synrk.RepositoryWithDetails) error {
+func (m *mockSynrk) SyncBranchWithUpstreamRepo(repo *RepositoryWithDetails) error {
 	return nil
 }
 

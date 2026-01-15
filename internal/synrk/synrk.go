@@ -9,43 +9,24 @@ import (
 	"time"
 
 	"github.com/google/go-github/v52/github"
+	"github.com/thetnaingtn/synrk/internal/ui"
 )
 
-type RepositoryWithDetails struct {
-	Owner          string
-	Name           string
-	FullName       string
-	Description    string
-	RepoURL        string
-	DefaultBranch  string
-	Parent         string
-	ParentFullName string
-	ParentDeleted  bool
-	Private        bool
-	BehindBy       int
-	Error          error
-}
-
-type Synrk interface {
-	GetForks(ctx context.Context) ([]*RepositoryWithDetails, error)
-	SyncBranchWithUpstreamRepo(repo *RepositoryWithDetails) error
-}
-
-type concrete struct {
+type Synrk struct {
 	client   *github.Client
 	pageSize int
 	force    bool
 }
 
-func NewSynrk(client *github.Client, pageSize int, force bool) Synrk {
-	return &concrete{
+func NewSynrk(client *github.Client, pageSize int, force bool) *Synrk {
+	return &Synrk{
 		client:   client,
 		pageSize: pageSize,
 		force:    force,
 	}
 }
 
-func (c *concrete) GetForks(ctx context.Context) ([]*RepositoryWithDetails, error) {
+func (c *Synrk) GetForks(ctx context.Context) ([]*ui.RepositoryWithDetails, error) {
 	forks, err := c.getAllForks(ctx)
 
 	if err != nil {
@@ -61,7 +42,7 @@ func (c *concrete) GetForks(ctx context.Context) ([]*RepositoryWithDetails, erro
 	return forksWithDetails, nil
 }
 
-func (c *concrete) SyncBranchWithUpstreamRepo(repo *RepositoryWithDetails) error {
+func (c *Synrk) SyncBranchWithUpstreamRepo(repo *ui.RepositoryWithDetails) error {
 	request := &github.RepoMergeUpstreamRequest{Branch: &repo.DefaultBranch}
 	res, resp, err := c.client.Repositories.MergeUpstream(context.Background(), repo.Owner, repo.Name, request)
 
@@ -76,7 +57,7 @@ func (c *concrete) SyncBranchWithUpstreamRepo(repo *RepositoryWithDetails) error
 	return nil
 }
 
-func (c *concrete) getReposDetail(ctx context.Context, forks []*github.Repository) []*RepositoryWithDetails {
+func (c *Synrk) getReposDetail(ctx context.Context, forks []*github.Repository) []*ui.RepositoryWithDetails {
 	done := make(chan any)
 
 	defer close(done)
@@ -91,7 +72,7 @@ func (c *concrete) getReposDetail(ctx context.Context, forks []*github.Repositor
 		forksRequiredSync = append(forksRequiredSync, fork)
 	}
 
-	forkStream := make(chan *RepositoryWithDetails, len(forksRequiredSync))
+	forkStream := make(chan *ui.RepositoryWithDetails, len(forksRequiredSync))
 	defer close(forkStream)
 
 	for _, fork := range forksRequiredSync {
@@ -103,7 +84,7 @@ func (c *concrete) getReposDetail(ctx context.Context, forks []*github.Repositor
 				repo, _, err := c.client.Repositories.Get(ctx, fork.GetOwner().GetLogin(), fork.GetName())
 				if err != nil {
 					log.Println("getReposDetail", err)
-					forkStream <- &RepositoryWithDetails{Error: fmt.Errorf("failed to get repository %s: %w", fork.GetName(), err)}
+					forkStream <- &ui.RepositoryWithDetails{Error: fmt.Errorf("failed to get repository %s: %w", fork.GetName(), err)}
 					return
 				}
 
@@ -143,7 +124,7 @@ func (c *concrete) getReposDetail(ctx context.Context, forks []*github.Repositor
 		}()
 	}
 
-	forksWithDetails := make([]*RepositoryWithDetails, 0, len(forksRequiredSync))
+	forksWithDetails := make([]*ui.RepositoryWithDetails, 0, len(forksRequiredSync))
 	for range len(forksRequiredSync) {
 		fork := <-forkStream
 		forksWithDetails = append(forksWithDetails, fork)
@@ -152,8 +133,8 @@ func (c *concrete) getReposDetail(ctx context.Context, forks []*github.Repositor
 	return forksWithDetails
 }
 
-func (c *concrete) buildDetails(repo *github.Repository, commit *github.CommitsComparison, code int) *RepositoryWithDetails {
-	repoWithDetails := &RepositoryWithDetails{
+func (c *Synrk) buildDetails(repo *github.Repository, commit *github.CommitsComparison, code int) *ui.RepositoryWithDetails {
+	repoWithDetails := &ui.RepositoryWithDetails{
 		ParentDeleted: code == http.StatusNotFound,
 	}
 
@@ -176,7 +157,7 @@ func (c *concrete) buildDetails(repo *github.Repository, commit *github.CommitsC
 	return repoWithDetails
 }
 
-func (c *concrete) getAllForks(ctx context.Context) ([]*github.Repository, error) {
+func (c *Synrk) getAllForks(ctx context.Context) ([]*github.Repository, error) {
 	var allRepos []*github.Repository
 	opts := &github.RepositoryListOptions{
 		Type:        "owner",
@@ -210,7 +191,7 @@ func (c *concrete) getAllForks(ctx context.Context) ([]*github.Repository, error
 	return forks, nil
 }
 
-func (c *concrete) doesForkRecentlyUpdated(updatedAt *time.Time) bool {
+func (c *Synrk) doesForkRecentlyUpdated(updatedAt *time.Time) bool {
 	if updatedAt == nil {
 		return false
 	}

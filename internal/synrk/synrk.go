@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"runtime"
+	"slices"
 	"sort"
 	"time"
 
@@ -140,6 +142,85 @@ func (c *concrete) getReposDetail(ctx context.Context, forks []*github.Repositor
 				forkStream <- c.buildDetails(repo, cmpr, resp.StatusCode)
 			}
 
+		}()
+	}
+
+	forksWithDetails := make([]*RepositoryWithDetails, 0, len(forksRequiredSync))
+	for range len(forksRequiredSync) {
+		fork := <-forkStream
+		forksWithDetails = append(forksWithDetails, fork)
+	}
+
+	return forksWithDetails
+}
+func (c *concrete) getReposDetail2(ctx context.Context, forks []*github.Repository) []*RepositoryWithDetails {
+	done := make(chan any)
+
+	defer close(done)
+
+	forksRequiredSync := []*github.Repository{}
+
+	for _, fork := range forks {
+		ghTimeStamp := fork.GetUpdatedAt()
+		if !c.force && c.doesForkRecentlyUpdated(ghTimeStamp.GetTime()) {
+			continue
+		}
+		forksRequiredSync = append(forksRequiredSync, fork)
+	}
+
+	forkStream := make(chan *RepositoryWithDetails, len(forksRequiredSync))
+	defer close(forkStream)
+
+	workers := runtime.NumCPU()
+
+	for forksChunk := range slices.Chunk(forksRequiredSync, workers) {
+		go func() {
+			select {
+			case <-done:
+				return
+			default:
+				for _, fork := range forksChunk {
+					repo, _, err := c.client.Repositories.Get(ctx, fork.GetOwner().GetLogin(), fork.GetName())
+					if err != nil {
+						log.Println("getReposDetail", err)
+						forkStream <- &RepositoryWithDetails{Error: fmt.Errorf("failed to get repository %s: %w", fork.GetName(), err)}
+						return
+					}
+
+					parent := repo.GetParent()
+
+					base := fmt.Sprintf("%s:%s", parent.GetOwner().GetLogin(), repo.GetDefaultBranch()) // compare with forked repo's default branch
+					head := fmt.Sprintf("%s:%s", repo.GetOwner().GetLogin(), repo.GetDefaultBranch())
+
+					cmpr, resp, err := c.client.Repositories.CompareCommits(
+						ctx,
+						repo.GetOwner().GetLogin(),
+						repo.GetName(),
+						base,
+						head,
+						&github.ListOptions{},
+					)
+
+					if err != nil && resp.StatusCode == http.StatusNotFound {
+						log.Println("getReposDetail", err)
+						repoWithDetail := c.buildDetails(repo, nil, resp.StatusCode)
+						repoWithDetail.Error = fmt.Errorf("can't find %s branch on %s", head, parent.GetFullName())
+						forkStream <- repoWithDetail
+						return
+					}
+
+					if err != nil && resp.StatusCode != http.StatusNotFound {
+						log.Println("getReposDetail", err)
+						repoWithDetail := c.buildDetails(repo, nil, resp.StatusCode)
+						repoWithDetail.Error = fmt.Errorf("failed to compare repository with parent %s: %w", parent.GetName(), err)
+						forkStream <- repoWithDetail
+						return
+					}
+
+					forkStream <- c.buildDetails(repo, cmpr, resp.StatusCode)
+				}
+
+			}
 		}()
 	}
 

@@ -3,7 +3,6 @@ package synrk
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,12 +11,11 @@ import (
 	"github.com/google/go-github/v52/github"
 )
 
-func setupMockServer(numRepos int) *httptest.Server {
+func setupMockServer() *httptest.Server {
 	mux := http.NewServeMux()
 
 	// Mock repository get endpoint
-	mux.HandleFunc("/repos/", func(w http.ResponseWriter, r *http.Request) {
-		// Parse owner and repo from path
+	mux.HandleFunc("/repos/testowner/test-repo", func(w http.ResponseWriter, r *http.Request) {
 		repo := &github.Repository{
 			Name:          github.String("test-repo"),
 			FullName:      github.String("testowner/test-repo"),
@@ -34,15 +32,12 @@ func setupMockServer(numRepos int) *httptest.Server {
 				},
 			},
 		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(repo)
+	})
 
-		// Check if this is a compare request
-		if len(r.URL.Path) > 20 && r.URL.Path[len(r.URL.Path)-7:] != "compare" {
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(repo)
-			return
-		}
-
-		// For compare endpoint
+	// Mock compare commits endpoint
+	mux.HandleFunc("/repos/testowner/test-repo/compare/parentowner:main...testowner:main", func(w http.ResponseWriter, r *http.Request) {
 		comparison := &github.CommitsComparison{
 			BehindBy: github.Int(5),
 			AheadBy:  github.Int(0),
@@ -60,8 +55,8 @@ func createMockForks(n int) []*github.Repository {
 
 	for i := 0; i < n; i++ {
 		forks[i] = &github.Repository{
-			Name:     github.String(fmt.Sprintf("repo-%d", i)),
-			FullName: github.String(fmt.Sprintf("testowner/repo-%d", i)),
+			Name:     github.String("test-repo"),
+			FullName: github.String("testowner/test-repo"),
 			Fork:     github.Bool(true),
 			Owner: &github.User{
 				Login: github.String("testowner"),
@@ -86,7 +81,7 @@ func BenchmarkGetReposDetail(b *testing.B) {
 
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
-			server := setupMockServer(bm.numForks)
+			server := setupMockServer()
 			defer server.Close()
 
 			client := github.NewClient(nil)

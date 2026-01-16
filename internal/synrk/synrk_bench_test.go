@@ -68,39 +68,46 @@ func createMockForks(n int) []*github.Repository {
 }
 
 func BenchmarkGetReposDetail(b *testing.B) {
-	benchmarks := []struct {
-		name     string
-		numForks int
-	}{
-		{"1_fork", 1},
-		{"5_forks", 5},
-		{"10_forks", 10},
-		{"25_forks", 25},
-		{"50_forks", 50},
+	server := setupMockServer()
+	defer server.Close()
+
+	client := github.NewClient(nil)
+	client.BaseURL, _ = client.BaseURL.Parse(server.URL + "/")
+
+	synrkClient := &concrete{
+		client:   client,
+		pageSize: 100,
+		force:    true,
 	}
 
-	for _, bm := range benchmarks {
-		b.Run(bm.name, func(b *testing.B) {
-			server := setupMockServer()
-			defer server.Close()
+	forks := createMockForks(100)
+	ctx := context.Background()
 
-			client := github.NewClient(nil)
-			client.BaseURL, _ = client.BaseURL.Parse(server.URL + "/")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		synrkClient.getReposDetail(ctx, forks)
+	}
+}
 
-			synrkClient := &concrete{
-				client:   client,
-				pageSize: 100,
-				force:    true,
-			}
+func BenchmarkGetReposDetail2(b *testing.B) {
+	server := setupMockServer()
+	defer server.Close()
 
-			forks := createMockForks(bm.numForks)
-			ctx := context.Background()
+	client := github.NewClient(nil)
+	client.BaseURL, _ = client.BaseURL.Parse(server.URL + "/")
 
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				synrkClient.getReposDetail(ctx, forks)
-			}
-		})
+	synrkClient := &concrete{
+		client:   client,
+		pageSize: 100,
+		force:    true,
+	}
+
+	forks := createMockForks(100)
+	ctx := context.Background()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		synrkClient.getReposDetail2(ctx, forks)
 	}
 }
 

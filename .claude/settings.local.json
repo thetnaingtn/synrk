@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go get:*)",
+      "Bash(CGO_ENABLED=0 go build:*)",
+      "Bash(go mod tidy:*)"
+    ]
+  }
+}

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/go-github/v52/github"
+	"github.com/thetnaingtn/synrk/internal/metrics"
 )
 
 type RepositoryWithDetails struct {
@@ -79,6 +80,10 @@ func (c *concrete) SyncBranchWithUpstreamRepo(repo *RepositoryWithDetails) error
 }
 
 func (c *concrete) getReposDetail(ctx context.Context, forks []*github.Repository) []*RepositoryWithDetails {
+	// Start metrics tracking
+	tracker := metrics.StartTracking("getReposDetail")
+	defer tracker.Stop()
+
 	done := make(chan any)
 
 	defer close(done)
@@ -96,6 +101,9 @@ func (c *concrete) getReposDetail(ctx context.Context, forks []*github.Repositor
 	forkStream := make(chan *RepositoryWithDetails, len(forksRequiredSync))
 	defer close(forkStream)
 
+	// Record goroutines being spawned (one per fork - unbounded concurrency)
+	tracker.RecordGoroutineSpawn(len(forksRequiredSync))
+
 	for _, fork := range forksRequiredSync {
 		go func() {
 			select {
@@ -105,6 +113,7 @@ func (c *concrete) getReposDetail(ctx context.Context, forks []*github.Repositor
 				repo, _, err := c.client.Repositories.Get(ctx, fork.GetOwner().GetLogin(), fork.GetName())
 				if err != nil {
 					log.Println("getReposDetail", err)
+					tracker.RecordForkError()
 					forkStream <- &RepositoryWithDetails{Error: fmt.Errorf("failed to get repository %s: %w", fork.GetName(), err)}
 					return
 				}
@@ -125,6 +134,7 @@ func (c *concrete) getReposDetail(ctx context.Context, forks []*github.Repositor
 
 				if err != nil && resp.StatusCode == http.StatusNotFound {
 					log.Println("getReposDetail", err)
+					tracker.RecordForkError()
 					repoWithDetail := c.buildDetails(repo, nil, resp.StatusCode)
 					repoWithDetail.Error = fmt.Errorf("can't find %s branch on %s", head, parent.GetFullName())
 					forkStream <- repoWithDetail
@@ -133,12 +143,14 @@ func (c *concrete) getReposDetail(ctx context.Context, forks []*github.Repositor
 
 				if err != nil && resp.StatusCode != http.StatusNotFound {
 					log.Println("getReposDetail", err)
+					tracker.RecordForkError()
 					repoWithDetail := c.buildDetails(repo, nil, resp.StatusCode)
 					repoWithDetail.Error = fmt.Errorf("failed to compare repository with parent %s: %w", parent.GetName(), err)
 					forkStream <- repoWithDetail
 					return
 				}
 
+				tracker.RecordForkProcessed()
 				forkStream <- c.buildDetails(repo, cmpr, resp.StatusCode)
 			}
 
@@ -154,6 +166,10 @@ func (c *concrete) getReposDetail(ctx context.Context, forks []*github.Repositor
 	return forksWithDetails
 }
 func (c *concrete) getReposDetail2(ctx context.Context, forks []*github.Repository) []*RepositoryWithDetails {
+	// Start metrics tracking
+	tracker := metrics.StartTracking("getReposDetail2")
+	defer tracker.Stop()
+
 	done := make(chan any)
 
 	defer close(done)
@@ -173,6 +189,10 @@ func (c *concrete) getReposDetail2(ctx context.Context, forks []*github.Reposito
 
 	workers := runtime.NumCPU()
 
+	// Record goroutines being spawned (CPU-bound worker pool)
+	numChunks := (len(forksRequiredSync) + workers - 1) / workers
+	tracker.RecordGoroutineSpawn(numChunks)
+
 	for forksChunk := range slices.Chunk(forksRequiredSync, workers) {
 		go func() {
 			select {
@@ -182,7 +202,8 @@ func (c *concrete) getReposDetail2(ctx context.Context, forks []*github.Reposito
 				for _, fork := range forksChunk {
 					repo, _, err := c.client.Repositories.Get(ctx, fork.GetOwner().GetLogin(), fork.GetName())
 					if err != nil {
-						log.Println("getReposDetail", err)
+						log.Println("getReposDetail2", err)
+						tracker.RecordForkError()
 						forkStream <- &RepositoryWithDetails{Error: fmt.Errorf("failed to get repository %s: %w", fork.GetName(), err)}
 						return
 					}
@@ -202,7 +223,8 @@ func (c *concrete) getReposDetail2(ctx context.Context, forks []*github.Reposito
 					)
 
 					if err != nil && resp.StatusCode == http.StatusNotFound {
-						log.Println("getReposDetail", err)
+						log.Println("getReposDetail2", err)
+						tracker.RecordForkError()
 						repoWithDetail := c.buildDetails(repo, nil, resp.StatusCode)
 						repoWithDetail.Error = fmt.Errorf("can't find %s branch on %s", head, parent.GetFullName())
 						forkStream <- repoWithDetail
@@ -210,13 +232,15 @@ func (c *concrete) getReposDetail2(ctx context.Context, forks []*github.Reposito
 					}
 
 					if err != nil && resp.StatusCode != http.StatusNotFound {
-						log.Println("getReposDetail", err)
+						log.Println("getReposDetail2", err)
+						tracker.RecordForkError()
 						repoWithDetail := c.buildDetails(repo, nil, resp.StatusCode)
 						repoWithDetail.Error = fmt.Errorf("failed to compare repository with parent %s: %w", parent.GetName(), err)
 						forkStream <- repoWithDetail
 						return
 					}
 
+					tracker.RecordForkProcessed()
 					forkStream <- c.buildDetails(repo, cmpr, resp.StatusCode)
 				}
 

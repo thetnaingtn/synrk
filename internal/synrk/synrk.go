@@ -54,11 +54,18 @@ func (c *concrete) GetForks(ctx context.Context) ([]*RepositoryWithDetails, erro
 
 	forksWithDetails := c.getReposDetail(ctx, forks)
 
-	sort.SliceStable(forksWithDetails, func(i, j int) bool {
-		return forksWithDetails[i].BehindBy > forksWithDetails[j].BehindBy
+	behindOrErrored := forksWithDetails[:0]
+	for _, f := range forksWithDetails {
+		if f.BehindBy > 0 || f.Error != nil {
+			behindOrErrored = append(behindOrErrored, f)
+		}
+	}
+
+	sort.SliceStable(behindOrErrored, func(i, j int) bool {
+		return behindOrErrored[i].BehindBy > behindOrErrored[j].BehindBy
 	})
 
-	return forksWithDetails, nil
+	return behindOrErrored, nil
 }
 
 func (c *concrete) SyncBranchWithUpstreamRepo(repo *RepositoryWithDetails) error {

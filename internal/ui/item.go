@@ -28,7 +28,7 @@ func (i item) Title() string {
 		return iconSynced + " " + titleStr
 	}
 
-	if !i.synced && i.repo.Error != nil {
+	if !i.synced && (i.repo.Error != nil || i.errMsg != "") {
 		return errorStyle.Render(iconSyncFailed + " " + titleStr)
 	}
 
@@ -47,6 +47,11 @@ func (i item) Description() string {
 	if i.repo.Error != nil {
 		reason := i.repo.Error.Error()
 		msg := base + " " + "fail to sync with" + " " + upstream + fmt.Sprintf("(%s)", reason)
+		return errorStyle.Copy().PaddingLeft(2).Render(msg)
+	}
+
+	if i.errMsg != "" {
+		msg := base + " fail to sync with " + upstream + fmt.Sprintf(" (%s)", i.errMsg)
 		return errorStyle.Copy().PaddingLeft(2).Render(msg)
 	}
 

@@ -70,14 +70,13 @@ func (c *concrete) GetForks(ctx context.Context) ([]*RepositoryWithDetails, erro
 
 func (c *concrete) SyncBranchWithUpstreamRepo(repo *RepositoryWithDetails) error {
 	request := &github.RepoMergeUpstreamRequest{Branch: &repo.DefaultBranch}
-	res, resp, err := c.client.Repositories.MergeUpstream(context.Background(), repo.Owner, repo.Name, request)
-
-	if resp.StatusCode == http.StatusConflict {
-		return fmt.Errorf("couldn't merge with upstream %s branch due to conflict", res.GetBaseBranch())
-	}
+	_, resp, err := c.client.Repositories.MergeUpstream(context.Background(), repo.Owner, repo.Name, request)
 
 	if err != nil {
-		return fmt.Errorf("couldn't merge with upstream %s branch: %w", res.GetBaseBranch(), err)
+		if resp != nil && resp.StatusCode == http.StatusConflict {
+			return fmt.Errorf("couldn't merge with upstream %s branch due to conflict", repo.DefaultBranch)
+		}
+		return fmt.Errorf("couldn't merge with upstream %s branch: %w", repo.DefaultBranch, err)
 	}
 
 	return nil
